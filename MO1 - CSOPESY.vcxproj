@@ -125,33 +125,32 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\OPESY\Command.cpp" />
-    <ClCompile Include="..\OPESY\CommandManager.cpp" />
-    <ClCompile Include="..\OPESY\ConfigSpecs.cpp" />
-    <ClCompile Include="..\OPESY\ConsoleManager.cpp" />
-    <ClCompile Include="..\OPESY\CPUScheduler.cpp" />
-    <ClCompile Include="..\OPESY\Main.cpp" />
-    <ClCompile Include="..\OPESY\MainConsole.cpp" />
     <ClCompile Include="..\OPESY\OSController.cpp" />
     <ClCompile Include="..\OPESY\Process.cpp" />
     <ClCompile Include="..\OPESY\ProcessConsole.cpp" />
     <ClCompile Include="..\OPESY\ProcessManager.cpp" />
-    <ClCompile Include="BaseConsolee.cpp" />
+    <ClCompile Include="BaseConsole.cpp" />
+    <ClCompile Include="Command.cpp" />
+    <ClCompile Include="CommandManager.cpp" />
+    <ClCompile Include="ConficSpecs.cpp" />
+    <ClCompile Include="ConsoleManager.cpp" />
     <ClCompile Include="customizedLayout.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="MainConsole.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\OPESY\Command.h" />
-    <ClInclude Include="..\OPESY\CommandManager.h" />
-    <ClInclude Include="..\OPESY\ConfigSpecs.h" />
-    <ClInclude Include="..\OPESY\ConsoleManager.h" />
-    <ClInclude Include="..\OPESY\CPUScheduler.h" />
-    <ClInclude Include="..\OPESY\MainConsole.h" />
     <ClInclude Include="..\OPESY\OSController.h" />
     <ClInclude Include="..\OPESY\Process.h" />
     <ClInclude Include="..\OPESY\ProcessConsole.h" />
     <ClInclude Include="..\OPESY\ProcessManager.h" />
+    <ClInclude Include="BaseConsole.h" />
+    <ClInclude Include="Command.h" />
+    <ClInclude Include="CommandManager.h" />
+    <ClInclude Include="ConficSpecs.h" />
+    <ClInclude Include="ConsoleManager.h" />
+    <ClInclude Include="CPUScheduler.h" />
     <ClInclude Include="customizedLayout.h" />
-    <ClInclude Include="OPESY\BaseConsole.h" />
+    <ClInclude Include="MainConsole.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\OPESY\config.txt" />

@@ -7,7 +7,7 @@
 #include <sstream>
 #include <limits>
 
-#include "../MO1 - CSOPESY/customizedLayout.h"
+#include "customizedLayout.h"
 
 void MainConsole::runConsole() {
     while (true) {

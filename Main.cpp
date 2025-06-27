@@ -4,6 +4,7 @@
 #include "MainConsole.h"
 #include "CommandManager.h"
 #include "ProcessManager.h"
+#include "Main.h"
 
 int main() {
 

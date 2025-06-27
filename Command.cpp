@@ -1,4 +1,3 @@
-//Barebones process instructions
 #include "Command.h"
 
 //TODO: Support basic process instructions, akin to programming language instructions.
@@ -20,3 +19,4 @@ void Command::executeCommand()
 //{
 //	// for logging print commands in processes
 //}
+

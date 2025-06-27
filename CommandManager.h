@@ -8,3 +8,5 @@ class CommandManager {
 public:
     std::vector<std::shared_ptr<Command>> generateCommands();
 };
+
+

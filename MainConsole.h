@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../MO1 - CSOPESY/OPESY/BaseConsole.h"
+#include "BaseConsole.h"
 #include <string>
 #include <vector>
 #include <iostream>
@@ -11,5 +11,5 @@ public:
     void runConsole() override;
 
 private:
-    std::vector<std::string> tokenizeInput(const std::string& input); 
+    std::vector<std::string> tokenizeInput(const std::string& input);
 };
