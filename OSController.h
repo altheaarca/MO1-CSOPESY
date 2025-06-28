@@ -5,26 +5,30 @@
 #include "ConsoleManager.h"
 #include "CommandManager.h"
 #include "ProcessManager.h"
+#include "CPUScheduler.h"
 
 class OSController {
 public:
     static OSController* getInstance();
+  
 
     void injectCoreComponents(std::shared_ptr<ConfigSpecs> config, std::shared_ptr<CommandManager> commandManager,
         std::shared_ptr<ProcessManager> processManager);
     void setConsoleManager(std::shared_ptr<ConsoleManager> consoleManager);
+	void setCPUScheduler(std::shared_ptr<CPUScheduler> scheduler);
 
     std::shared_ptr<ConfigSpecs> getConfig();
     std::shared_ptr<ConsoleManager> getConsoleManager();
     std::shared_ptr<CommandManager> getCommandManager();
     std::shared_ptr<ProcessManager> getProcessManager();
+    std::shared_ptr<CPUScheduler> getCPUScheduler();
 
     bool isOSInitialized() const;
     void initialize();
 
 private:
     OSController() = default;
-    ~OSController() = default;
+    ~OSController();
 
     OSController(const OSController&) = delete;
     OSController& operator=(const OSController&) = delete;
@@ -33,6 +37,7 @@ private:
 
     bool isInitialized = false;
 
+    std::shared_ptr<CPUScheduler> cpuScheduler;
     std::shared_ptr<ConfigSpecs> config;
     std::shared_ptr<ConsoleManager> consoleManager;
     std::shared_ptr<CommandManager> commandManager;

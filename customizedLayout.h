@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-#include "OPESY/BaseConsole.h"
+#include "BaseConsole.h"
 class customizedLayout :public BaseConsole {
 public:
     customizedLayout(const std::string &screenName);

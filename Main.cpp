@@ -4,7 +4,7 @@
 #include "MainConsole.h"
 #include "CommandManager.h"
 #include "ProcessManager.h"
-#include "Main.h"
+#include "CPUScheduler.h"
 
 int main() {
 
@@ -15,23 +15,27 @@ int main() {
     OSController::getInstance()->setConsoleManager(consoleManager);
     OSController::getInstance()->getConsoleManager()->CSOPESYHeader();
 
+
     while (true) {
         std::cout << "> ";
         std::string input;
         std::getline(std::cin, input);
 
-        if (!OSController::getInstance()->isOSInitialized()) {
+         if (!OSController::getInstance()->isOSInitialized()) {
 
-            if (input == "in" || input == "initialize") {
-               auto config = std::make_shared<ConfigSpecs>("config.txt");
-                OSController::getInstance()->injectCoreComponents(config, commandManager, processManager);
-                OSController::getInstance()->initialize();
-                break;
-            }
-            else {
-                std::cout << "Please initialize." << std::endl << std::endl;
-            }
-        }
+             if (input == "in" || input == "initialize") {
+                auto config = std::make_shared<ConfigSpecs>("config.txt");
+                 OSController::getInstance()->injectCoreComponents(config, commandManager, processManager);
+                 OSController::getInstance()->initialize();
+                 auto Scheduler = std::make_shared<CPUScheduler>(config);
+                 OSController::getInstance()->setCPUScheduler(Scheduler);
+                 break;
+             }
+             else {
+                 std::cout << "Please initialize." << std::endl << std::endl;
+             }
+         }
+
     }
 
     OSController::getInstance()->getConsoleManager()->clearScreen();

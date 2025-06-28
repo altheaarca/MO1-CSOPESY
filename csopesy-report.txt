@@ -1,0 +1,18 @@
+CPU utilization: 31.25%
+Cores used: 10
+Cores available: 22
+-----------------------------------------------------
+Running processes:
+
+Finished processes:
+process1    (06/28/2025 04:34:28PM)   Finished   100 / 100
+process2    (06/28/2025 04:34:28PM)   Finished   100 / 100
+process3    (06/28/2025 04:34:28PM)   Finished   100 / 100
+process4    (06/28/2025 04:34:29PM)   Finished   100 / 100
+process5    (06/28/2025 04:34:29PM)   Finished   100 / 100
+process6    (06/28/2025 04:34:29PM)   Finished   100 / 100
+process7    (06/28/2025 04:34:29PM)   Finished   100 / 100
+process8    (06/28/2025 04:34:29PM)   Finished   100 / 100
+process9    (06/28/2025 04:34:29PM)   Finished   100 / 100
+process10   (06/28/2025 04:34:29PM)   Finished   100 / 100
+-----------------------------------------------------

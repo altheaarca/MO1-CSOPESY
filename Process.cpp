@@ -1,17 +1,20 @@
 #include "Process.h"
 
+#include <fstream>
+#include <iomanip>
+
 Process::Process(int pID, std::string pName, std::vector<std::shared_ptr<Command>> cList)
 {
     processID = pID;
-    processName = pName;
+    processName = std::move(pName);
     commandList = std::move(cList);
     processCreatedOn = std::time(nullptr);
     linesOfCode = static_cast<std::uint32_t>(commandList.size());
 }
 
-void Process::executeCurrentCommand() {
+void Process::executeCurrentCommand(int cpuId) {
     if (currentInstructionLine < commandList.size()) {
-        commandList[currentInstructionLine]->executeCommand();
+        commandList[currentInstructionLine]->executeCommand(*this, cpuId);  // NEW version using stateful exec
     }
 }
 
@@ -79,9 +82,8 @@ int Process::getCurrentCPUID()
 {
     return currentCPUID;
 }
-
-const std::vector<std::string>& Process::getPrintLogs()
-{
-    return printLogs;
+std::unordered_map<std::string, uint16_t>& Process::getVariables() {
+    return variables;
 }
+
 

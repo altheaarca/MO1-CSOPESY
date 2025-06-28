@@ -10,13 +10,13 @@ OSController* OSController::getInstance() {
     }
     return instance;
 }
-
 // Unified component injection
 void OSController::injectCoreComponents(std::shared_ptr<ConfigSpecs> config, std::shared_ptr<CommandManager> commandManager, 
     std::shared_ptr<ProcessManager> processManager) {
-    this->config = std::move(config);
+    this->config = config; 
     this->commandManager = std::move(commandManager);
     this->processManager = std::move(processManager);
+
 }
 
 // Separate console manager setter
@@ -51,3 +51,15 @@ bool OSController::isOSInitialized() const {
 void OSController::initialize() {
     isInitialized = true;
 }
+void OSController::setCPUScheduler(std::shared_ptr<CPUScheduler> scheduler) {
+    this->cpuScheduler = scheduler;
+}
+std::shared_ptr<CPUScheduler> OSController::getCPUScheduler() {
+    return cpuScheduler;
+}
+OSController::~OSController() {
+    std::cout << "[OSController] Destroyed.\n";
+}
+
+
+

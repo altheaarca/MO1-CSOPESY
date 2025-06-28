@@ -1,4 +1,4 @@
-#include "MainConsole.h"
+﻿#include "MainConsole.h"
 #include "OSController.h"
 #include "ProcessConsole.h"
 #include "Process.h"
@@ -6,7 +6,6 @@
 #include <iostream>
 #include <sstream>
 #include <limits>
-
 #include "customizedLayout.h"
 
 void MainConsole::runConsole() {
@@ -23,34 +22,47 @@ void MainConsole::runConsole() {
         if (tokens.size() == 1) {
             const std::string& cmd = tokens[0];
 
-            if (cmd == "a") {
-                OSController::getInstance()->getConsoleManager()->listProcessConsoles();
-            }
-            else if (cmd == "nvidia-smi")
-            {
-                auto nvidiasmi = std::make_shared<customizedLayout>("nvidia-dummy");
-                OSController::getInstance()->getConsoleManager()->createProcessConsole("nvidia-dummy", nvidiasmi);
-                OSController::getInstance()->getConsoleManager()->switchToProcessConsole("nvidia-dummy");
-            }
-            else if (cmd == "initialize") {
-                std::cout << "Command recognized: \n\n";
-            }
-            else if (cmd == "marquee") {
-                std::cout << "Command recognized: marquee\n\n";
+			 if (cmd == "screen -ls") {
+                 OSController::getInstance()->getConsoleManager()->listProcessConsoles();
             }
             else if (cmd == "clear") {
                 OSController::getInstance()->getConsoleManager()->clearScreen();
                 std::cout << "Command recognized: clear\n\n";
             }
             else if (cmd == "report-util") {
-                std::cout << "Command recognized: report-util\n\n";
-            }
+                 auto scheduler = OSController::getInstance()->getCPUScheduler();
+                 scheduler->printUtil();
+             }
             else if (cmd == "scheduler-start") {
-                std::cout << "Command recognized: scheduler-start\n\n";
-            }
+                 auto scheduler = OSController::getInstance()->getCPUScheduler();
+
+                 for (int i = 0; i < 10; ++i) {
+                     auto commands = OSController::getInstance()->getCommandManager()->generateCommands();
+                     auto proc = std::make_shared<Process>(i, "process" + std::to_string(i + 1), commands);
+                     // Console setup
+                     OSController::getInstance()->getConsoleManager()->createProcessConsole(
+                         proc->getProcessName(),
+                         std::make_shared<ProcessConsole>(proc->getProcessName(), proc)
+                     );
+                     if (proc != nullptr)
+                         scheduler->addProcess(proc);
+                 }
+                 scheduler->start();
+             }
+
+
             else if (cmd == "scheduler-stop") {
                 std::cout << "Command recognized: scheduler-stop\n\n";
+
+                auto scheduler = OSController::getInstance()->getCPUScheduler();
+                if (scheduler) {
+                    scheduler->stop();
+                }
+                else {
+                    std::cout << "[Scheduler] No scheduler instance available.\n";
+                }
             }
+
             else if (cmd == "exit") {
                 exit(0);
             }
@@ -63,12 +75,10 @@ void MainConsole::runConsole() {
             std::string cmd2 = tokens[0] + " " + tokens[1];
 
             if (cmd2 == "screen -ls") {
-                std::cout << "Command recognized: screen -ls\n\n";
-            }
-            else {
-                std::cout << "Command not found.\n\n";
+                OSController::getInstance()->getConsoleManager()->listProcessConsoles();
             }
         }
+
         else if (tokens.size() == 3) {
             std::string cmd3 = tokens[0] + " " + tokens[1];
 
@@ -77,22 +87,20 @@ void MainConsole::runConsole() {
                     std::cout << "Process console '" << tokens[2] << "' already exists.\n\n";
                 }
                 else {
-                    auto c = OSController::getInstance()->getCommandManager()->generateCommands();
-
-                    uint32_t minIns = OSController::getInstance()->getConfig()->getMinInstructions();
-                    uint32_t maxIns = OSController::getInstance()->getConfig()->getMaxInstructions();
+                    auto commands = OSController::getInstance()->getCommandManager()->generateCommands();
 
                     int id = OSController::getInstance()->getConsoleManager()->getGlobalProcessID();
                     OSController::getInstance()->getConsoleManager()->incrementGlobalProcessID();
 
-
-                    auto newProcess = OSController::getInstance()->getProcessManager()->createProcess(id, tokens[2], c);
+                    auto newProcess = OSController::getInstance()->getProcessManager()->createProcess(id, tokens[2], commands);
                     auto processConsole = std::make_shared<ProcessConsole>(tokens[2], newProcess);
 
                     OSController::getInstance()->getConsoleManager()->createProcessConsole(tokens[2], processConsole);
-                    OSController::getInstance()->getConsoleManager()->switchToProcessConsole(tokens[2]);
+                    OSController::getInstance()->getCPUScheduler()->addProcess(newProcess);
+                    std::cout << "created successfully"">> \n\n";;
                 }
             }
+
             else if (cmd3 == "screen -r") {
                 OSController::getInstance()->getConsoleManager()->switchToProcessConsole(tokens[2]);
             }

@@ -1,5 +1,5 @@
 #include "ConsoleManager.h"
-
+#include "OSController.h"
 
 ConsoleManager::ConsoleManager()
 {
@@ -68,17 +68,12 @@ void ConsoleManager::switchToProcessConsole(const std::string& name) {
 	}
 }
 
-void ConsoleManager::listProcessConsoles()
-{
-	std::cout << "=== Registered Process Consoles ===\n";
-	for (const auto& [name, console] : consoleMap) {
-		auto procConsole = std::dynamic_pointer_cast<ProcessConsole>(console);
-		if (procConsole) {
-			std::cout << "- " << procConsole->getProcessScreenName() << '\n';
-		}
-	}
-	std::cout << std::endl;
+// Inside ConsoleManager.cpp
+void ConsoleManager::listProcessConsoles() {
+	auto scheduler = OSController::getInstance()->getCPUScheduler();  // centralized access
+	scheduler->printReport(std::cout);  // single function handles CPU + process output
 }
+
 
 int ConsoleManager::getGlobalProcessID()
 {
