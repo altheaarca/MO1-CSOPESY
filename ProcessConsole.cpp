@@ -42,7 +42,7 @@ void ProcessConsole::runConsole()
 				std::cout << "State: " << processStateToString(attachedProcess->getProcessState()) << "\n";
 				std::cout << "CPU ID: " << attachedProcess->getCurrentCPUID() << "\n\n";
 			}
-			else {
+			else  { //TODO: consider making this else if  or other fix 
 				std::cout << "Process name: " << attachedProcess->getProcessName() << "\n";
 				std::cout << "ID: " << attachedProcess->getProcessID() << "\n";
 				std::time_t finished = attachedProcess->getProcessFinishedOn();

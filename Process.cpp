@@ -9,13 +9,16 @@ Process::Process(int pID, std::string pName, std::vector<std::shared_ptr<Command
     processName = std::move(pName);
     commandList = std::move(cList);
     processCreatedOn = std::time(nullptr);
+    processFinishedOn = 0;
     linesOfCode = static_cast<std::uint32_t>(commandList.size());
+    variables["x"] = 0;
 }
 
 void Process::executeCurrentCommand(int cpuId) {
     if (currentInstructionLine < commandList.size()) {
         commandList[currentInstructionLine]->executeCommand(*this, cpuId);  // NEW version using stateful exec
     }
+
 }
 
 void Process::moveToNextLine() {

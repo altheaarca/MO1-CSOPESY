@@ -55,6 +55,13 @@ void OSController::setCPUScheduler(std::shared_ptr<CPUScheduler> scheduler) {
     this->cpuScheduler = scheduler;
 }
 std::shared_ptr<CPUScheduler> OSController::getCPUScheduler() {
+	// Check if the CPU scheduler is initialized. nullptr check is not needed here as the method will return nullptr if not set.
+    auto scheduler = OSController::getInstance()->getCPUScheduler();
+    if (scheduler)
+        scheduler->printReport(std::cout);
+    else
+        std::cout << "Scheduler not initialized.\n";
+	// Return the CPU scheduler instance
     return cpuScheduler;
 }
 OSController::~OSController() {

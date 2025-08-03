@@ -59,7 +59,8 @@ void customizedLayout::runConsole() {
 	std::cout << "\nPress Enter to return...";
 	std::string dummy;
 	std::getline(std::cin, dummy);
-	OSController::getInstance()->getConsoleManager()->switchToProcessConsole("main");
+	OSController::getInstance()->getConsoleManager()->clearScreen();
+
 }
 
 

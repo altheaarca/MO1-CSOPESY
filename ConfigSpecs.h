@@ -15,6 +15,10 @@ public:
     std::uint32_t getMaxInstructions() const;
     std::uint32_t getDelayPerExecution() const;
 
+    std::uint32_t getMaxOverallMemory() const;
+    std::uint32_t getMemPerFrame() const;
+    std::uint32_t getMemPerProcess() const;
+
     void printConfig() const;
 
 private:
@@ -27,4 +31,8 @@ private:
     std::uint32_t minInstructions = 1000;
     std::uint32_t maxInstructions = 2000;
     std::uint32_t delayPerExecution = 0;
+    std::uint32_t maxOverallMemory = 16384;
+    std::uint32_t memPerFrame = 16;
+    std::uint32_t memPerProcess = 4096;
 };
+

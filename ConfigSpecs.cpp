@@ -7,6 +7,7 @@
 #include <iomanip>   
 #include <string>
 
+
 ConfigSpecs::ConfigSpecs(const std::string& configFileName) {
     parseConfigFile(configFileName);
 }
@@ -24,7 +25,7 @@ void ConfigSpecs::parseConfigFile(const std::string& fileName) {
             file >> numCPU;
         }
         else if (key == "scheduler") {
-            file >> std::quoted(schedulerType);  
+            file >> std::quoted(schedulerType);
         }
         else if (key == "quantum-cycles") {
             file >> quantumCycles;
@@ -41,6 +42,16 @@ void ConfigSpecs::parseConfigFile(const std::string& fileName) {
         else if (key == "delay-per-exec") {
             file >> delayPerExecution;
         }
+        else if (key == "max-overall-mem") {
+            file >> maxOverallMemory;
+        }
+        else if (key == "mem-per-frame") {
+            file >> memPerFrame;
+        }
+        else if (key == "mem-per-proc") {
+            file >> memPerProcess;
+        }
+
     }
 }
 
@@ -52,6 +63,10 @@ std::uint32_t ConfigSpecs::getBatchProcessFreq() const { return batchProcessFreq
 std::uint32_t ConfigSpecs::getMinInstructions() const { return minInstructions; }
 std::uint32_t ConfigSpecs::getMaxInstructions() const { return maxInstructions; }
 std::uint32_t ConfigSpecs::getDelayPerExecution() const { return delayPerExecution; }
+std::uint32_t ConfigSpecs::getMaxOverallMemory() const { return maxOverallMemory; }
+std::uint32_t ConfigSpecs::getMemPerFrame() const { return memPerFrame; }
+std::uint32_t ConfigSpecs::getMemPerProcess() const { return memPerProcess; }
+
 
 void ConfigSpecs::printConfig() const {
     std::cout << "=== ConfigSpecs ===\n"
@@ -61,5 +76,12 @@ void ConfigSpecs::printConfig() const {
         << "Batch Proc Freq:     " << batchProcessFreq << "\n"
         << "Min Instructions:    " << minInstructions << "\n"
         << "Max Instructions:    " << maxInstructions << "\n"
-        << "Delay per Execution: " << delayPerExecution << "\n";
+        << "Delay per Execution: " << delayPerExecution << "\n"
+        << "Max Overall Mem:     " << maxOverallMemory << "\n" //
+        << "Memory per Frame:    " << memPerFrame << "\n" //
+        << "Memory per Process:  " << memPerProcess << "\n"; //
+
 }
+
+
+

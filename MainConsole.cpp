@@ -62,11 +62,18 @@ void MainConsole::runConsole() {
                     std::cout << "[Scheduler] No scheduler instance available.\n";
                 }
             }
+            else if (cmd == "process-smi") {
+				 auto memory = OSController::getInstance()->getCPUScheduler()->getMemoryManager(); 
+            	 memory->printMemoryStatus(); 
+             }
+            else if (cmd == "vmstat") {
+                 auto scheduler = OSController::getInstance()->getCPUScheduler();
+                 scheduler->printVMStat();
+             }
 
             else if (cmd == "exit") {
                 exit(0);
             }
-
             else {
                 std::cout << "Command not found.\n\n";
             }
@@ -83,22 +90,8 @@ void MainConsole::runConsole() {
             std::string cmd3 = tokens[0] + " " + tokens[1];
 
             if (cmd3 == "screen -s") {
-                if (OSController::getInstance()->getConsoleManager()->processConsoleExists(tokens[2])) {
-                    std::cout << "Process console '" << tokens[2] << "' already exists.\n\n";
-                }
-                else {
-                    auto commands = OSController::getInstance()->getCommandManager()->generateCommands();
-
-                    int id = OSController::getInstance()->getConsoleManager()->getGlobalProcessID();
-                    OSController::getInstance()->getConsoleManager()->incrementGlobalProcessID();
-
-                    auto newProcess = OSController::getInstance()->getProcessManager()->createProcess(id, tokens[2], commands);
-                    auto processConsole = std::make_shared<ProcessConsole>(tokens[2], newProcess);
-
-                    OSController::getInstance()->getConsoleManager()->createProcessConsole(tokens[2], processConsole);
-                    OSController::getInstance()->getCPUScheduler()->addProcess(newProcess);
-                    std::cout << "created successfully"">> \n\n";;
-                }
+                const std::string& name = tokens[2];
+                std::cout << "Missing memory size argument for screen -s.\n\n";
             }
 
             else if (cmd3 == "screen -r") {
@@ -106,6 +99,47 @@ void MainConsole::runConsole() {
             }
             else {
                 std::cout << "Command not found.\n\n";
+            }
+        }
+        else if (tokens.size() == 4) {
+            std::string cmd3 = tokens[0] + " " + tokens[1];
+            const std::string& name = tokens[2];
+            const std::string& memStr = tokens[3];
+
+            if (cmd3 == "screen -s") {
+                int memSize = std::stoi(memStr);
+
+                auto isPowerOf2 = [](int x) { return x >= 64 && x <= 65536 && (x & (x - 1)) == 0; };
+                if (!isPowerOf2(memSize)) {
+                    std::cout << "Invalid memory allocation. Must be power of 2 and between 64 and 65536.\n\n";
+                    return;
+                }
+
+                if (OSController::getInstance()->getConsoleManager()->processConsoleExists(name)) {
+                    std::cout << "Process console '" << name << "' already exists.\n\n";
+                }
+                else {
+                    auto commands = OSController::getInstance()->getCommandManager()->generateCommands();
+
+                    int id = OSController::getInstance()->getConsoleManager()->getGlobalProcessID();
+                    OSController::getInstance()->getConsoleManager()->incrementGlobalProcessID();
+
+                    auto scheduler = OSController::getInstance()->getCPUScheduler();
+                    auto memoryManager = scheduler->getMemoryManager();
+                    uint32_t frameSize = OSController::getInstance()->getConfig()->getMemPerFrame();
+                    auto newProcess = OSController::getInstance()->getProcessManager()->createProcess(id, name, commands, memSize, frameSize, memoryManager);
+
+                    if (!newProcess) {
+                        std::cout << "Failed to create process '" << name << "' due to memory issues.\n\n";
+                        return;
+                    }
+
+                    auto processConsole = std::make_shared<ProcessConsole>(name, newProcess);
+                    OSController::getInstance()->getConsoleManager()->createProcessConsole(name, processConsole);
+                    OSController::getInstance()->getCPUScheduler()->addProcess(newProcess);
+
+                    std::cout << "Process '" << name << "' created with " << memSize << " bytes.\n\n";
+                }
             }
         }
     }

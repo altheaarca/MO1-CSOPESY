@@ -1,0 +1,19 @@
+CPU utilization: 0.00%
+Cores used: 0
+Cores available: 16
+-----------------------------------------------------
+Running processes:
+process8    (06/28/2025 08:54:54PM)   Core: 0   690 / 5000
+
+Finished processes:
+process1    (01/01/1970 08:00:00AM)   Finished   5000 / 5000
+process2    (01/01/1970 08:00:00AM)   Finished   5000 / 5000
+process3    (01/01/1970 08:00:00AM)   Finished   5000 / 5000
+process4    (01/01/1970 08:00:00AM)   Finished   5000 / 5000
+process5    (01/01/1970 08:00:00AM)   Finished   5000 / 5000
+process6    (01/01/1970 08:00:00AM)   Finished   5000 / 5000
+process7    (01/01/1970 08:00:00AM)   Finished   5000 / 5000
+process8    (01/01/1970 08:00:00AM)   Finished   5000 / 5000
+process9    (01/01/1970 08:00:00AM)   Finished   5000 / 5000
+process10   (01/01/1970 08:00:00AM)   Finished   5000 / 5000
+-----------------------------------------------------

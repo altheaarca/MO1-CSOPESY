@@ -1,48 +1,42 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <memory>
 #include <variant>
 
-class Process; // forward declaration
+class Process;
+enum class CommandType { PRINT, ADD, SUBTRACT, SLEEP, FOR_LOOP, DECLARE, READ, WRITE };
 
 class Command {
 public:
-    enum CommandType {
-        PRINT,
-        ADD,
-        SUBTRACT,
-        SLEEP,
-        FOR_LOOP
-    };
+    using Arg = std::variant<std::string, uint16_t>;
 
-    using Arg = std::variant<std::string, uint16_t>; // for var or constant
-
-    Command(CommandType type = PRINT, const std::string& msg = "");
-
-    // Overloads for various commands
-    static Command makePrint(const std::string& msg);
-    static Command makeAdd(const std::string& var, Arg a, Arg b);
-    static Command makeSubtract(const std::string& var, Arg a, Arg b);
-    static Command makeSleep(uint8_t ticks);
-    static Command makeForLoop(const std::vector<Command>& instructions, uint16_t repeatCount);
-
-    void executeCommand(const std::string& processName, int cpuId);
-    void executeCommand(Process& proc, int cpuId); // for stateful ops
-
-    CommandType getType() const;
-
-private:
     CommandType type;
     std::string message;
 
-    // For ADD/SUBTRACT
+    // operands
     std::string targetVar;
     Arg operand1, operand2;
-
-    // For SLEEP
     uint8_t sleepTicks = 0;
-
-    // For FOR_LOOP
-    std::vector<Command> loopBody;
     uint16_t repeatCount = 0;
+    std::vector<Command> loopBody;
+
+    // READ/WRITE args
+    std::string readVar;
+    uint32_t readAddress = 0;
+    uint32_t writeAddress = 0;
+    Arg writeValue;
+
+    Command(CommandType t, const std::string& msg = "") : type(t), message(msg) {}
+
+    void executeCommand(Process& proc, int cpuId);
+
+    static Command makePrint(const std::string&);
+    static Command makeAdd(const std::string&, Arg, Arg);
+    static Command makeSubtract(const std::string&, Arg, Arg);
+    static Command makeSleep(uint8_t);
+    static Command makeForLoop(const std::vector<Command>&, uint16_t);
+    static Command makeDeclare(const std::string&, uint16_t);
+    static Command makeRead(const std::string&, uint32_t);
+    static Command makeWrite(uint32_t, Arg);
 };

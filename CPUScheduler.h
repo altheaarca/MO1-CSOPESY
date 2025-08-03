@@ -1,48 +1,54 @@
+// CPUScheduler.h
 #pragma once
-#include <memory>
+
+#include <thread>
 #include <mutex>
 #include <queue>
-#include "ConfigSpecs.h"
-#include <thread>
+#include <vector>
 #include <unordered_map>
+#include <memory>
+#include <cstdint>
+#include <iostream>
 
-#include "ProcessManager.h"
+#include "Process.h"
+#include "ConfigSpecs.h"
+#include "MemoryManager.h"
 
 class CPUScheduler {
 public:
-    explicit  CPUScheduler(std::shared_ptr<ConfigSpecs> config);
+    CPUScheduler(std::shared_ptr<ConfigSpecs> config, std::shared_ptr<MemoryManager> memManager);
 
-    virtual void schedule();
     void start();
     void stop();
+    void schedule();
     void addProcess(std::shared_ptr<Process> process);
+    void printReport(std::ostream& out);
+    void printUtil();
+    void printVMStat();
+
+    std::shared_ptr<MemoryManager> getMemoryManager() { return memoryManager; }
+
+private:
     void schedulerThreadFunction();
     void runFCFS(uint32_t cpuId, std::shared_ptr<Process> proc);
     void runRR(uint32_t cpuId, std::shared_ptr<Process> proc);
     void moveToFinished(std::shared_ptr<Process> proc, uint32_t cpuId);
-    int getUsedCPUCount();
-    void getReportData(std::string& cpuStatsOut, std::vector<std::shared_ptr<Process>>& runningOut,
-                       std::vector<std::shared_ptr<Process>>& finishedOut);
-    void printReport(std::ostream& out);
-    void printUtil();
 
+    std::shared_ptr<ConfigSpecs> config;
+    std::shared_ptr<MemoryManager> memoryManager;
 
-private:
-
-    std::thread schedulerThread;
-    bool schedulerRunning = false;
-    std::mutex schedulerMutex; // NEW: to protect schedulerRunning
-
-    std::atomic<uint32_t> cpuCycles{ 0 };
-
-    std::vector<std::thread> cpuThreads;
-    std::unordered_map<uint32_t, bool> cpuStatus; // true = free, false = busy
     std::queue<std::shared_ptr<Process>> readyQueue;
     std::vector<std::shared_ptr<Process>> runningProcesses;
     std::vector<std::shared_ptr<Process>> finishedProcesses;
+    std::unordered_map<uint32_t, bool> cpuStatus;
+    std::vector<std::thread> cpuThreads;
+    std::thread schedulerThread;
 
+    bool schedulerRunning = false;
+    uint32_t cpuCycles = 0;
+	std::condition_variable schedulerCv; // added for thread synchronization
+	std::mutex schedulerCvMutex; //added for thread synchronization
     std::mutex queueMutex;
     std::mutex cpuMutex;
-    bool freeCPU = true ;
-   std::shared_ptr<ConfigSpecs> config;
+    std::mutex schedulerMutex;
 };

@@ -7,7 +7,6 @@
 #include "CPUScheduler.h"
 
 int main() {
-
     auto consoleManager = std::make_shared<ConsoleManager>();
     auto commandManager = std::make_shared<CommandManager>();
     auto processManager = std::make_shared<ProcessManager>();
@@ -15,33 +14,31 @@ int main() {
     OSController::getInstance()->setConsoleManager(consoleManager);
     OSController::getInstance()->getConsoleManager()->CSOPESYHeader();
 
-
     while (true) {
         std::cout << "> ";
         std::string input;
         std::getline(std::cin, input);
 
-         if (!OSController::getInstance()->isOSInitialized()) {
-
-             if (input == "in" || input == "initialize") {
+        if (!OSController::getInstance()->isOSInitialized()) {
+            if (input == "in" || input == "initialize") {
                 auto config = std::make_shared<ConfigSpecs>("config.txt");
-                 OSController::getInstance()->injectCoreComponents(config, commandManager, processManager);
-                 OSController::getInstance()->initialize();
-                 auto Scheduler = std::make_shared<CPUScheduler>(config);
-                 OSController::getInstance()->setCPUScheduler(Scheduler);
-                 break;
-             }
-             else {
-                 std::cout << "Please initialize." << std::endl << std::endl;
-             }
-         }
+                auto memoryManager = std::make_shared<MemoryManager>(config);// directly
+                auto scheduler = std::make_shared<CPUScheduler>(config, memoryManager);
 
+                OSController::getInstance()->injectCoreComponents(config, commandManager, processManager);
+                OSController::getInstance()->initialize();
+                OSController::getInstance()->setCPUScheduler(scheduler);
+
+                break;
+            }
+            else {
+                std::cout << "Please initialize." << std::endl << std::endl;
+            }
+        }
     }
 
     OSController::getInstance()->getConsoleManager()->clearScreen();
     MainConsole ad;
-
     ad.runConsole();
-
     return 0;
 }
