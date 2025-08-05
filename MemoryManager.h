@@ -1,62 +1,38 @@
-﻿// MemoryManager.h
-#pragma once
+﻿#pragma once
+#include <cstdint>      
+#include <memory>       
+#include <unordered_map> 
+#include <vector>      
 
-#include <vector>
-#include <queue>
-#include <mutex>
-#include <memory>
-#include "ConfigSpecs.h"
-#include "BackingStore.h"
+class Process;
 
-class MemoryManager {
+class MemoryManager
+{
 public:
-    struct MemoryBlock {
-        uint32_t startAddress;
-        uint32_t size;
-        bool allocated;
-        std::string processName;
-    };
+	MemoryManager(std::uint32_t maxMem, std::uint32_t memFrame);
+	bool isAllocatable(std::uint32_t processPages);
+	void allocateProcess(std::shared_ptr<Process> process);
+	void deallocateProcess(std::shared_ptr<Process> process);
+	bool isProcessAllocated(std::shared_ptr<Process> process);
+	void viewMemoryPages();
+	std::shared_ptr<Process> getOldestProcess();
+	std::uint32_t getTotalMemory();
+	std::uint32_t getFrameSize();
+	std::uint32_t getTotalPages();
+	std::uint32_t getFramesPagedIn();
+	std::uint32_t getFramesPagedOut();
+	std::uint32_t getTotalUsedMemory();
 
-    MemoryManager(std::shared_ptr<ConfigSpecs> config);
-    bool allocateMemory(const std::string& processName);
-    void deallocateMemory(const std::string& processName);
-    void mergeFreeBlocks();
-    uint32_t getExternalFragmentation() const;
-    void generateMemorySnapshot(uint32_t quantumCycle);
-    void printMemoryStatus();
-    const std::vector<MemoryBlock>& getMemoryBlocks() const;
-
-    // Demand‐paging API
-    void tickCycle();
-    bool loadPage(const std::string& processName, int pageNumber, bool isModified);
-    bool replacePage(const std::string& processName, int pageNumber, bool isModified);
-
-    // Introspection
-    uint32_t getPagesPagedIn()  const { return pagesPagedIn; }
-    uint32_t getPagesPagedOut() const { return pagesPagedOut; }
-    uint32_t getFrameSize()     const { return frameSize; }
-    uint32_t getCpuCycles()     const { return cpuCycles; }
-
+	void virtualMemoryStat();
+	void processInformation();
 private:
-    struct Frame {
-        bool occupied = false;
-        std::string ownerProcess;
-        int pageNumber = -1;
-        bool modified = false;
-        uint32_t lastUsedCycle = 0;
-    };
-
-    std::shared_ptr<BackingStore> backingStore;
-    std::vector<MemoryBlock>      memoryBlocks;
-    std::vector<Frame>            frameTable;
-    std::queue<int>               fifoQueue;
-
-    uint32_t totalMemory = 0;
-    uint32_t memPerProc = 0;
-    uint32_t frameSize = 0;
-    uint32_t cpuCycles = 0;
-    uint32_t pagesPagedIn = 0;
-    uint32_t pagesPagedOut = 0;
-
-    std::mutex mutex_;
+	std::uint32_t totalMemory;
+	std::uint32_t totalUsedMemory;
+	std::uint32_t frameSize;
+	std::uint32_t totalPages;
+	std::uint32_t framesPagedIn;
+	std::uint32_t framesPagedOut;
+	std::unordered_map<int, int> pageTable;
+	std::vector<std::shared_ptr<Process>> processesAllocatedInMemory;
 };
+

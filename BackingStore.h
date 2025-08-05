@@ -1,26 +1,27 @@
 ﻿#pragma once
-#include <string>
-#include <vector>
 
-/// BackingStore manages all disk‐style page writes/reads for swapped pages.
+#include <string>
+#include <memory>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <unordered_map>
+
+class Process;
+
 class BackingStore {
 public:
-    /// @param filename  file to append/read pages
-    explicit BackingStore(const std::string& filename = "csopesy-backing-store.txt");
+    BackingStore(const std::string& backingStoreTextFile, const std::string& backingStoreLogFile);
 
-    /// Write a page’s content to backing store
-    bool writePage(const std::string& processName,
-        int pageNumber,
-        const std::string& content);
-
-    /// Read a page’s content from backing store
-    std::vector<std::string> readPage(const std::string& processName,
-        int pageNumber);
-
-    /// Log that pageNumber of processName was evicted
-    void logEviction(const std::string& processName,
-        int pageNumber);
+    void storeProcess(std::shared_ptr<Process> process);
+    void loadProcess(std::shared_ptr<Process> process);
+    void logOperation(const std::string& operation, const std::shared_ptr<Process>& process);
 
 private:
-    std::string storeFilename;
+    std::string textFileName;
+    std::string logFileName;
+
+    void writeToFile(const std::string& line);
+    void appendToLog(const std::string& logLine);
 };

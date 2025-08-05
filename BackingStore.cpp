@@ -1,69 +1,103 @@
 #include "BackingStore.h"
+#include "Process.h" 
 #include <fstream>
+ #include <sstream>
+#include <iostream>
 #include <iomanip>
-#include <chrono>
-#include <ctime>
 
-BackingStore::BackingStore(const std::string& filename)
-    : storeFilename(filename)
+BackingStore::BackingStore(const std::string& backingStoreTextFile, const std::string& backingStoreLogFile)
 {
+    textFileName = backingStoreTextFile;
+    logFileName = backingStoreLogFile;
+
+    std::ofstream clearText(textFileName, std::ios::trunc);
+    clearText.close();
+
+    std::ofstream clearLog(logFileName, std::ios::trunc);
+    clearLog.close();
 }
 
-bool BackingStore::writePage(const std::string& processName,
-    int pageNumber,
-    const std::string& content)
+void BackingStore::storeProcess(std::shared_ptr<Process> process)
 {
-    std::ofstream out(storeFilename, std::ios::app);
-    if (!out.is_open()) return false;
+    std::ostringstream oss;
+    oss << process->getProcessID() << " "
+        << process->getProcessName() << " "
+        << process->getCurrentInstructionLine() << " "
+        << process->getLinesOfCode() << " "
+        << process->getProcessCreatedOn() << " "
+        << process->getMemorySize() << " "
+        << process->getFrameSize() << " "
+        << process->getTotalPages();
 
-    // Timestamp
-    auto now = std::chrono::system_clock::now();
-    auto in_time_t = std::chrono::system_clock::to_time_t(now);
-    std::tm tm{}; localtime_s(&tm, &in_time_t);
-
-    out << "==== Process: " << processName
-        << " Page: " << pageNumber << " ====\n";
-    out << "Timestamp: " << std::put_time(&tm, "%m/%d/%Y %I:%M:%S %p") << "\n";
-    out << content << "\n\n";
-    return true;
+    writeToFile(oss.str());
+    logOperation("STORE " + process->getProcessName() + ":", process);
 }
 
-std::vector<std::string> BackingStore::readPage(const std::string& processName,
-    int pageNumber)
+void BackingStore::loadProcess(std::shared_ptr<Process> process)
 {
-    std::ifstream in(storeFilename);
-    std::vector<std::string> section;
-    if (!in.is_open()) return section;
+    logOperation("LOAD " + process->getProcessName() + ":", process);
+
+    std::ifstream inFile(textFileName);
+    std::ostringstream newContent;
 
     std::string line;
-    std::string header = "==== Process: " + processName + " Page: " + std::to_string(pageNumber) + " ====";
-    bool inSection = false;
-    while (std::getline(in, line)) {
-        if (!inSection) {
-            if (line == header) {
-                inSection = true;
-            }
-        }
-        else {
-            if (line.rfind("====", 0) == 0) break; // next section
-            section.push_back(line);
+    std::string targetPID = std::to_string(process->getProcessID());
+
+    while (std::getline(inFile, line)) {
+        std::istringstream iss(line);
+        std::string pidStr;
+        iss >> pidStr;
+
+        if (pidStr != targetPID) {
+            newContent << line << "\n";  // Keep only unmatched lines
         }
     }
-    return section;
+
+    inFile.close();
+
+    std::ofstream outFile(textFileName, std::ios::trunc); // Clear and overwrite original file
+    outFile << newContent.str();
+    outFile.close();
 }
 
-void BackingStore::logEviction(const std::string& processName,
-    int pageNumber)
+
+void BackingStore::logOperation(const std::string& operation, const std::shared_ptr<Process>& process)
 {
-    std::ofstream out(storeFilename, std::ios::app);
-    if (!out.is_open()) return;
+    std::ostringstream oss;
+    oss << operation << " "
+        << process->getProcessID() << " "
+        << process->getCurrentInstructionLine() << " "
+        << process->getLinesOfCode() << " "
+        << process->getProcessCreatedOn() << " "
+        << process->getMemorySize() << " "
+        << process->getFrameSize() << " "
+        << process->getTotalPages();
 
-    auto now = std::chrono::system_clock::now();
-    auto in_time_t = std::chrono::system_clock::to_time_t(now);
-    std::tm tm{}; localtime_s(&tm, &in_time_t);
+    appendToLog(oss.str());
+}
 
-    out << "[Eviction] Process " << processName
-        << " page " << pageNumber
-        << " at " << std::put_time(&tm, "%m/%d/%Y %I:%M:%S %p")
-        << "\n\n";
+void BackingStore::writeToFile(const std::string& line)
+{
+    std::ofstream outFile(textFileName, std::ios::app);
+    if (outFile.is_open()) {
+        outFile << line << '\n';
+        outFile.close();
+    }
+    else {
+        return;
+        //std::cerr << "[BackingStore] Failed to write to file: " << textFileName << '\n';
+    }
+}
+
+void BackingStore::appendToLog(const std::string& logLine)
+{
+    std::ofstream logFileOut(logFileName, std::ios::app);
+    if (logFileOut.is_open()) {
+        logFileOut << logLine << '\n';
+        logFileOut.close();
+    }
+    else {
+        return;
+        /*std::cerr << "[BackingStore] Failed to append to log file: " << logFileName << '\n';*/
+    }
 }

@@ -1,6 +1,5 @@
 #include "OSController.h"
 #include "ConsoleManager.h"  // Needed for the member variable
-#include "CPUScheduler.h"
 
 OSController* OSController::instance = nullptr;
 
@@ -10,18 +9,30 @@ OSController* OSController::getInstance() {
     }
     return instance;
 }
-// Unified component injection
-void OSController::injectCoreComponents(std::shared_ptr<ConfigSpecs> config, std::shared_ptr<CommandManager> commandManager, 
-    std::shared_ptr<ProcessManager> processManager) {
-    this->config = config; 
+
+
+void OSController::injectCoreComponents(std::shared_ptr<ConfigSpecs> config,
+    std::shared_ptr<CommandManager> commandManager,
+    std::shared_ptr<ProcessManager> processManager,
+    std::shared_ptr<CPUScheduler> cpuScheduler,
+    std::shared_ptr<MemoryManager> memoryManager,
+    std::shared_ptr<BackingStore> backingStore) {
+    this->config = std::move(config);
     this->commandManager = std::move(commandManager);
     this->processManager = std::move(processManager);
-
+    this->cpuScheduler = std::move(cpuScheduler); // ? Set the scheduler
+    this->memoryManager = std::move(memoryManager);
+    this->backingStore = std::move(backingStore);
 }
 
 // Separate console manager setter
 void OSController::setConsoleManager(std::shared_ptr<ConsoleManager> consoleManager) {
     this->consoleManager = std::move(consoleManager);
+}
+
+void OSController::setCPUScheduler(std::shared_ptr<CPUScheduler> cpuScheduler)
+{
+    this->cpuScheduler = std::move(cpuScheduler);
 }
 
 // Accessors
@@ -43,6 +54,21 @@ std::shared_ptr<ProcessManager> OSController::getProcessManager()
     return processManager;
 }
 
+std::shared_ptr<CPUScheduler> OSController::getCPUScheduler()
+{
+    return cpuScheduler;
+}
+
+std::shared_ptr<MemoryManager> OSController::getMemoryManager()
+{
+    return memoryManager;
+}
+
+std::shared_ptr<BackingStore> OSController::getBackingStore()
+{
+    return backingStore;
+}
+
 // Initialization check & flag
 bool OSController::isOSInitialized() const {
     return isInitialized;
@@ -51,22 +77,3 @@ bool OSController::isOSInitialized() const {
 void OSController::initialize() {
     isInitialized = true;
 }
-void OSController::setCPUScheduler(std::shared_ptr<CPUScheduler> scheduler) {
-    this->cpuScheduler = scheduler;
-}
-std::shared_ptr<CPUScheduler> OSController::getCPUScheduler() {
-	// Check if the CPU scheduler is initialized. nullptr check is not needed here as the method will return nullptr if not set.
-    auto scheduler = OSController::getInstance()->getCPUScheduler();
-    if (scheduler)
-        scheduler->printReport(std::cout);
-    else
-        std::cout << "Scheduler not initialized.\n";
-	// Return the CPU scheduler instance
-    return cpuScheduler;
-}
-OSController::~OSController() {
-    std::cout << "[OSController] Destroyed.\n";
-}
-
-
-

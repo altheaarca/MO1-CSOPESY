@@ -1,6 +1,7 @@
 #include "ConsoleManager.h"
 #include "OSController.h"
 
+
 ConsoleManager::ConsoleManager()
 {
 }
@@ -27,7 +28,7 @@ void ConsoleManager::CSOPESYHeader()
 	std::cout << "\n ==========================" << std::endl;
 	std::cout << "\n Hello, Welcome to CSOPESY commandline!\n" << COLOR_GREEN;
 	std::cout << "\n Developer: Arca, Althea Denisse\n" << COLOR_RESET;
-	std::cout << "\n Last Updated: 06-25-2025 \n" << COLOR_RESET;
+	std::cout << "\n Last Updated: 08-03-2025 \n" << COLOR_RESET;
 	std::cout << "\n ==========================\n " << std::endl;
 	std::cout << COLOR_YELLOW << "Type 'exit' to quit, 'clear' to clear the screen\n" << COLOR_YELLOW;
 	std::cout << COLOR_RESET;
@@ -60,7 +61,7 @@ void ConsoleManager::switchToProcessConsole(const std::string& name) {
 	if (it != consoleMap.end()) {
 		currentConsole = it->second;
 		system("cls");
-		currentConsole->runConsole();  
+		currentConsole->runConsole();
 		clearScreen();
 	}
 	else {
@@ -68,12 +69,17 @@ void ConsoleManager::switchToProcessConsole(const std::string& name) {
 	}
 }
 
-// Inside ConsoleManager.cpp
-void ConsoleManager::listProcessConsoles() {
-	auto scheduler = OSController::getInstance()->getCPUScheduler();  // centralized access
-	scheduler->printReport(std::cout);  // single function handles CPU + process output
+void ConsoleManager::listProcessConsoles()
+{
+	std::cout << "=== Registered Process Consoles ===\n";
+	for (const auto& [name, console] : consoleMap) {
+		auto procConsole = std::dynamic_pointer_cast<ProcessConsole>(console);
+		if (procConsole) {
+			std::cout << "- " << procConsole->getProcessScreenName() << '\n';
+		}
+	}
+	std::cout << std::endl;
 }
-
 
 int ConsoleManager::getGlobalProcessID()
 {
@@ -85,4 +91,13 @@ void ConsoleManager::incrementGlobalProcessID()
 	globalProcessID++;
 }
 
- 
+std::shared_ptr<ProcessConsole> ConsoleManager::getProcessConsole(const std::string& name)
+{
+	auto it = consoleMap.find(name);
+	if (it != consoleMap.end()) {
+		// Downcast from shared_ptr<BaseConsole> to shared_ptr<ProcessConsole>
+		return std::dynamic_pointer_cast<ProcessConsole>(it->second);
+	}
+	return nullptr; // not found
+}
+

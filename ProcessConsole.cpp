@@ -9,8 +9,16 @@ ProcessConsole::ProcessConsole(std::string screenName, std::shared_ptr<Process> 
 
 void ProcessConsole::runConsole()
 {
+	auto config = OSController::getInstance()->getConfig();
 	std::cout << "Welcome to " << processScreenName << std::endl << std::endl;
+	std::cout << "Process Memory Size: " << attachedProcess->getMemorySize() << std::endl;
+	std::cout << "Pages Required: " << attachedProcess->getTotalPages() << std::endl;
+	std::cout << "OS Memory Frame Size: " << config->getMemPerFrame() << std::endl << std::endl;
 
+	std::cout << "Current instruction line: " << attachedProcess->getCurrentInstructionLine() << "\n";
+	std::cout << "Lines of code: " << attachedProcess->getLinesOfCode() << "\n";
+
+	attachedProcess->viewLogPrintStatements();
 	isProcessConsoleRunning = true;
 	std::string input;
 
@@ -23,12 +31,12 @@ void ProcessConsole::runConsole()
 
 		if (input == "exit") {
 			isProcessConsoleRunning = false;
-			/*OSController::getInstance()->getConsoleManager()->clearScreen();*/
 		}
 		if (input == "1" || input == "process-smi") {
 			if (!attachedProcess->isFinished()) {
-				std::cout << "Process name: " << attachedProcess->getProcessName() << "\n";
+				std::cout << "\nProcess name: " << attachedProcess->getProcessName() << "\n";
 				std::cout << "ID: " << attachedProcess->getProcessID() << "\n";
+				attachedProcess->viewLogPrintStatements();
 				std::cout << "Current instruction line: " << attachedProcess->getCurrentInstructionLine() << "\n";
 				std::cout << "Lines of code: " << attachedProcess->getLinesOfCode() << "\n";
 				std::time_t created = attachedProcess->getProcessCreatedOn();
@@ -37,25 +45,56 @@ void ProcessConsole::runConsole()
 
 				std::cout << "Created On: ("
 					<< std::put_time(&timeinfo, "%m/%d/%Y %I:%M:%S%p")
-					<< ")\n";
+					<< ")\n\n";
 
-				std::cout << "State: " << processStateToString(attachedProcess->getProcessState()) << "\n";
-				std::cout << "CPU ID: " << attachedProcess->getCurrentCPUID() << "\n\n";
+				/*		std::cout << "State: " << processStateToString(attachedProcess->getProcessState()) << "\n";*/
+			/*			std::cout << "CPU ID: " << attachedProcess->getCurrentCPUID() << "\n\n";*/
 			}
-			else  { //TODO: consider making this else if  or other fix 
-				std::cout << "Process name: " << attachedProcess->getProcessName() << "\n";
+			if (attachedProcess->isProcessStoppedDueToMemoryAccessError()) {
+				std::cout << "\nProcess name: " << attachedProcess->getProcessName() << "\n";
 				std::cout << "ID: " << attachedProcess->getProcessID() << "\n";
+				attachedProcess->viewLogPrintStatements();
+				std::cout << "Current instruction line: " << attachedProcess->getCurrentInstructionLine() << "\n";
+				std::cout << "Lines of code: " << attachedProcess->getLinesOfCode() << "\n";
+				std::time_t created = attachedProcess->getProcessCreatedOn();
+				std::tm timeinfo{};
+				localtime_s(&timeinfo, &created);
+
+				std::cout << "Created On: ("
+					<< std::put_time(&timeinfo, "%m/%d/%Y %I:%M:%S%p")
+					<< ")\n\n";
+
+
+				time_t stopTime = attachedProcess->getProcessStoppedOn();
+
+				std::tm timeInfo;
+				localtime_s(&timeInfo, &stopTime);
+				std::ostringstream oss;
+				oss << "" << std::put_time(&timeInfo, "%H:%M:%S") << "";
+				std::string formattedTime = oss.str();
+
+				std::cout << "Memory access violation error at address " << attachedProcess->getInvalidMemoryAccess() << " (" << formattedTime << ")\n\n";
+
+				/*		std::cout << "State: " << processStateToString(attachedProcess->getProcessState()) << "\n";*/
+			/*			std::cout << "CPU ID: " << attachedProcess->getCurrentCPUID() << "\n\n";*/
+			}
+			if (attachedProcess->isFinished()) {
+				std::cout << "\nProcess name: " << attachedProcess->getProcessName() << "\n";
+				std::cout << "ID: " << attachedProcess->getProcessID() << "\n";
+				attachedProcess->viewLogPrintStatements();
 				std::time_t finished = attachedProcess->getProcessFinishedOn();
 				std::tm timeinfo{};
 				localtime_s(&timeinfo, &finished);
 
-				std::cout << "Created On: ("
+				std::cout << "Finished On: ("
 					<< std::put_time(&timeinfo, "%m/%d/%Y %I:%M:%S%p")
-					<< ")\n";
+					<< ")\n\n";
 
-				std::cout << "State: " << processStateToString(attachedProcess->getProcessState()) << "\n";
-				std::cout << "CPU ID: " << attachedProcess->getCurrentCPUID() << "\n";
-				std::cout << "Finished! " << "\n\n";
+				/*		std::cout << "State: " << processStateToString(attachedProcess->getProcessState()) << "\n";*/
+				/*		std::cout << "CPU ID: " << attachedProcess->getCurrentCPUID() << "\n";*/
+						//std::cout << "Finished! " << "\n\n";
+						/*attachedProcess->viewSymbolTableAndMemorySpace();*/
+						//attachedProcess->viewLogPrintStatements();
 			}
 		}
 		else {
@@ -77,4 +116,9 @@ std::string ProcessConsole::processStateToString(Process::ProcessState state) {
 	case Process::FINISHED: return "FINISHED";
 	default: return "UNKNOWN";
 	}
+}
+
+std::shared_ptr<Process> ProcessConsole::getAttachedProcess()
+{
+	return attachedProcess;
 }

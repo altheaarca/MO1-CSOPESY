@@ -1,98 +1,180 @@
-// Command.cpp  (excerpt with paging hooks)
 #include "Command.h"
-#include "Process.h"
+#include "Process.h"   
 #include "OSController.h"
-#include "MemoryManager.h"
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <iostream>
-#include <variant>
-#include <thread>
-#include <chrono>
+#include <random>
 
-namespace {
-    uint16_t resolveArg(const Command::Arg& arg, const auto& vars) {
-        if (std::holds_alternative<std::string>(arg)) {
-            auto it = vars.find(std::get<std::string>(arg));
-            return it != vars.end() ? it->second : 0;
-        }
-        return std::get<uint16_t>(arg);
+Command::Command(const std::string& commandT)
+{
+    commandType = commandT;
+}
+
+Command::Command(const std::string& commandT, bool simulated)
+    : commandType(commandT), simulated(simulated) {
+}
+
+Command::Command(const std::string& commandT, std::string declareVar, std::int16_t declareValue)
+    : commandType(commandT),
+    declareVar(declareVar),
+    declareValue(declareValue) {
+}
+
+Command::Command(const std::string& commandT, std::uint8_t opMode, std::string varSum, std::string varAdd1, std::string varAdd2, std::int16_t opAdd1, std::int16_t opAdd2)
+{
+    if (commandT == "ADD") {
+        commandType = commandT;
+        this->opMode = opMode;
+        this->varSum = varSum;
+        this->varAdd1 = varAdd1;
+        this->varAdd2 = varAdd2;
+        this->opAdd1 = opAdd1;
+        this->opAdd2 = opAdd2;
+    }
+    else if (commandT == "SUBTRACT") {
+        commandType = commandT;
+        this->opMode = opMode;
+        this->varDiff = varSum;
+        this->varSub1 = varAdd1;
+        this->varSub2 = varAdd2;
+        this->opSub1 = opAdd1;
+        this->opSub2 = opAdd2;
     }
 }
 
-void Command::executeCommand(Process& proc, int cpuId) {
-    auto& vars = proc.getVariables();
-    auto mm = OSController::getInstance()->getCPUScheduler()->getMemoryManager();
+Command::Command(const std::string& commandT, bool isValue, std::string writeAddress, std::string writeVar, std::int16_t writeValue)
+    : commandType(commandT),
+    isValue(isValue),
+    writeAddress(writeAddress),
+    writeVar(writeVar),
+    writeValue(writeValue) {
+}
 
-    switch (type) {
-    case CommandType::DECLARE: {
-        // symbol-table page 0
-        if (!proc.isPageValid(0)) {
-            mm->loadPage(proc.getProcessName(), 0, false);
-            proc.setPageValid(0,
-                proc.getFrameForPage(0),
-                mm->getCpuCycles());
-        }
-        // declare var with 0 if absent
-        vars[targetVar] = vars[targetVar];
-        break;
-    }
-    case CommandType::READ: {
-        int page = (int)(readAddress / mm->getFrameSize());
-        if (!proc.isPageValid(page)) {
-            mm->loadPage(proc.getProcessName(), page, false);
-            proc.setPageValid(page,
-                proc.getFrameForPage(page),
-                mm->getCpuCycles());
-        }
-        // simulate read
-        uint16_t val = 0;
-        vars[readVar] = val;
-        break;
-    }
-    case CommandType::WRITE: {
-        int page = (int)(writeAddress / mm->getFrameSize());
-        if (!proc.isPageValid(page)) {
-            mm->loadPage(proc.getProcessName(), page, true);
-            proc.setPageValid(page,
-                proc.getFrameForPage(page),
-                mm->getCpuCycles());
-        }
-        proc.pageTable[page].modified = true;
+Command::Command(const std::string& commandT, std::string readVar, std::string readAddress)
+    : commandType(commandT),
+    readVar(readVar),
+    readAddress(readAddress) {
+}
 
-        break;
+Command::Command(const std::string& commandT, std::string printString, std::string printValueFromVar, bool withVar)
+    : commandType(commandT),
+    withVar(withVar),
+    printString(printString),
+    printValueFromVar(printValueFromVar) {
+}
+
+// Method used in your process execution — good
+void Command::executeCommand() {
+    /* std::cout << "Executing command (no process): " << commandType << std::endl;*/
+}
+
+void Command::executeCommand2(Process& proc) {
+    if (simulated) {
+        auto processSize = proc.getLinesOfCode();
+
+        // Determine chance: start at 1/32, double every 1000 lines
+        int baseChance = 32;
+        int exponent = processSize / 1000;
+        int chanceDenominator = baseChance * (1 << exponent); // 1 << exponent = 2^exponent
+
+        // RNG setup
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dist(0, chanceDenominator - 1);
+
+        // 1/N chance
+        if (dist(gen) == 0) {
+            std::uint32_t value = proc.increasingValue;
+            std::string message = "Hello world from " + proc.getProcessName() + "!" + " With var x: " + std::to_string(value);
+            proc.logPrintStatements(message);
+            proc.increasingValue++;
+        }
     }
-    case CommandType::PRINT: {
-        std::ofstream out(proc.getProcessName() + ".txt", std::ios::app);
-        if (!out) break;
-        auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        std::tm tm{}; localtime_s(&tm, &now);
-        out << "[" << std::put_time(&tm, "%m/%d/%Y %I:%M:%S %p")
-            << "] [CPU " << cpuId << "] " << message << "\n";
-        break;
+
+
+    if (commandType == "DECLARE") {
+        proc.insertValueToVar(declareVar, declareValue);
+        /*proc.viewSymbolTableAndMemorySpace();*/
     }
-    case CommandType::ADD: {
-        uint16_t a = resolveArg(operand1, vars), b = resolveArg(operand2, vars);
-        vars[targetVar] = (uint16_t)std::clamp<int>(a + b, 0, 65535);
-        break;
-    }
-    case CommandType::SUBTRACT: {
-        uint16_t a = resolveArg(operand1, vars), b = resolveArg(operand2, vars);
-        vars[targetVar] = (uint16_t)std::clamp<int>(a - b, 0, 65535);
-        break;
-    }
-    case CommandType::SLEEP: {
-        std::this_thread::sleep_for(std::chrono::milliseconds(sleepTicks));
-        break;
-    }
-    case CommandType::FOR_LOOP: {
-        for (int i = 0; i < repeatCount; ++i) {
-            for (auto& cmd : loopBody) {
-                cmd.executeCommand(proc, cpuId);
+    else if (commandType == "ADD") {
+        if (opMode == 1) {
+            auto var1 = proc.getValueFromVar(varAdd1);
+            auto var2 = proc.getValueFromVar(varAdd2);
+            if (var1.has_value() && var2.has_value()) {
+                auto result = var1.value() + var2.value();
+                proc.insertValueToVar(varSum, result);
             }
         }
-        break;
+        if (opMode == 2) {
+            auto var1 = proc.getValueFromVar(varAdd1);
+            if (var1.has_value()) {
+                auto result = var1.value() + opAdd2;
+                proc.insertValueToVar(varSum, result);
+            }
+        }
+        if (opMode == 3) {
+            auto var2 = proc.getValueFromVar(varAdd2);
+            if (var2.has_value()) {
+                auto result = opAdd1 + var2.value();
+                proc.insertValueToVar(varSum, result);
+            }
+        }
+        if (opMode == 4) {
+            auto result = opAdd1 + opAdd2;
+            proc.insertValueToVar(varSum, result);
+        }
     }
+    else if (commandType == "SUBTRACT") {
+        if (opMode == 1) {
+            auto var1 = proc.getValueFromVar(varSub1);
+            auto var2 = proc.getValueFromVar(varSub2);
+            if (var1.has_value() && var2.has_value()) {
+                auto result = var1.value() - var2.value();
+                proc.insertValueToVar(varDiff, result);
+            }
+        }
+        if (opMode == 2) {
+            auto var1 = proc.getValueFromVar(varSub1);
+            if (var1.has_value()) {
+                auto result = var1.value() - opSub2;
+                proc.insertValueToVar(varDiff, result);
+            }
+        }
+        if (opMode == 3) {
+            auto var2 = proc.getValueFromVar(varSub2);
+            if (var2.has_value()) {
+                auto result = opSub1 - var2.value();
+                proc.insertValueToVar(varDiff, result);
+            }
+        }
+        if (opMode == 4) {
+            auto result = opSub1 - opSub2;
+            proc.insertValueToVar(varDiff, result);
+        }
     }
+    else if (commandType == "WRITE") {
+        if (isValue) {
+            proc.insertValueToMemory(writeAddress, writeValue);
+        }
+        else {
+            proc.insertValueFromVarToMemory(writeAddress, writeVar);
+        }
+    }
+    else if (commandType == "READ") {
+        proc.insertValueFromAddressToVar(readVar, readAddress);
+    }
+    else if (commandType == "PRINT") {
+        if (withVar) {
+            std::string pString = printString;
+            auto value = proc.getValueFromVar(printValueFromVar);
+            std::int16_t printValue = value.value();
+            proc.logPrintStatements(pString + std::to_string(printValue));
+        }
+        else {
+            std::string pString = printString;
+            proc.logPrintStatements(pString);
+        }
+    }
+}
+
+const std::string& Command::getCommandType() const {
+    return commandType;
 }

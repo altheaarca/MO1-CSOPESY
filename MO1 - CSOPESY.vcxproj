@@ -125,35 +125,39 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\OPESY\OSController.cpp" />
-    <ClCompile Include="..\OPESY\Process.cpp" />
-    <ClCompile Include="..\OPESY\ProcessConsole.cpp" />
-    <ClCompile Include="..\OPESY\ProcessManager.cpp" />
-    <ClCompile Include="BaseConsole.cpp" />
+    <ClCompile Include="BackingStore.cpp" />
     <ClCompile Include="Command.cpp" />
     <ClCompile Include="CommandManager.cpp" />
-    <ClCompile Include="ConficSpecs.cpp" />
+    <ClCompile Include="ConfigSpecs.cpp" />
     <ClCompile Include="ConsoleManager.cpp" />
+    <ClCompile Include="CPUScheduler.cpp" />
     <ClCompile Include="customizedLayout.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MainConsole.cpp" />
+    <ClCompile Include="MemoryManager.cpp" />
+    <ClCompile Include="OSController.cpp" />
+    <ClCompile Include="Process.cpp" />
+    <ClCompile Include="ProcessConsole.cpp" />
+    <ClCompile Include="ProcessManager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\OPESY\OSController.h" />
-    <ClInclude Include="..\OPESY\Process.h" />
-    <ClInclude Include="..\OPESY\ProcessConsole.h" />
-    <ClInclude Include="..\OPESY\ProcessManager.h" />
+    <ClInclude Include="BackingStore.h" />
     <ClInclude Include="BaseConsole.h" />
     <ClInclude Include="Command.h" />
     <ClInclude Include="CommandManager.h" />
-    <ClInclude Include="ConficSpecs.h" />
+    <ClInclude Include="ConfigSpecs.h" />
     <ClInclude Include="ConsoleManager.h" />
     <ClInclude Include="CPUScheduler.h" />
     <ClInclude Include="customizedLayout.h" />
     <ClInclude Include="MainConsole.h" />
+    <ClInclude Include="MemoryManager.h" />
+    <ClInclude Include="OSController.h" />
+    <ClInclude Include="Process.h" />
+    <ClInclude Include="ProcessConsole.h" />
+    <ClInclude Include="ProcessManager.h" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="..\OPESY\config.txt" />
+    <Text Include="config.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

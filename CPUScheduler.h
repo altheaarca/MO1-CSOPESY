@@ -1,54 +1,58 @@
-// CPUScheduler.h
 #pragma once
-
+#include <cstdint>
+#include <optional> 
+#include <unordered_map>
+#include <atomic>
+#include <queue>
+#include "Process.h"
 #include <thread>
 #include <mutex>
-#include <queue>
-#include <vector>
-#include <unordered_map>
-#include <memory>
-#include <cstdint>
-#include <iostream>
+#include <random>
 
-#include "Process.h"
-#include "ConfigSpecs.h"
-#include "MemoryManager.h"
-
-class CPUScheduler {
+class CPUScheduler
+{
 public:
-    CPUScheduler(std::shared_ptr<ConfigSpecs> config, std::shared_ptr<MemoryManager> memManager);
+	CPUScheduler();
+	void runScheduler();
+	void startCPU(std::shared_ptr<Process> process, int cpuID);
+	uint32_t getCpuCycles();
+	uint32_t getActiveCPUTicks();
+	uint32_t getIdleCPUTicks();
+	void cpuScheduling();
+	void batchProcessing();
+	void cpuWorker(std::shared_ptr<Process> process, int cpuID, std::string algo);
+	void addProcessToReadyQueue(std::shared_ptr<Process> process);
+	void startSchedulingProcesses();
+	void stopSchedulingProcesses();
+	void screenList();
+	void reportUtil();
+	std::shared_ptr<Process> getNextProcess();
+	void addToRunningProcesses(std::shared_ptr<Process> runningProcess);
+	void addProcessesToFinishedProcessesFromRunningProcessesList();
+	void printReadyQueueForProcesses();
+	std::vector<std::shared_ptr<Process>> getFinishedProcesses();
+	std::vector<std::shared_ptr<Process>> getRunningProcesses();
+	void printReadyQueue();
+	void printFreeCPUs();
+	std::optional<int> getFreeCPU();
 
-    void start();
-    void stop();
-    void schedule();
-    void addProcess(std::shared_ptr<Process> process);
-    void printReport(std::ostream& out);
-    void printUtil();
-    void printVMStat();
-
-    std::shared_ptr<MemoryManager> getMemoryManager() { return memoryManager; }
+	std::uint32_t getAmountOfWorkingCPUs();
+	std::uint32_t getAmountOfCPUs();
+	void incrementActiveIdleCPUTicks();
 
 private:
-    void schedulerThreadFunction();
-    void runFCFS(uint32_t cpuId, std::shared_ptr<Process> proc);
-    void runRR(uint32_t cpuId, std::shared_ptr<Process> proc);
-    void moveToFinished(std::shared_ptr<Process> proc, uint32_t cpuId);
-
-    std::shared_ptr<ConfigSpecs> config;
-    std::shared_ptr<MemoryManager> memoryManager;
-
-    std::queue<std::shared_ptr<Process>> readyQueue;
-    std::vector<std::shared_ptr<Process>> runningProcesses;
-    std::vector<std::shared_ptr<Process>> finishedProcesses;
-    std::unordered_map<uint32_t, bool> cpuStatus;
-    std::vector<std::thread> cpuThreads;
-    std::thread schedulerThread;
-
-    bool schedulerRunning = false;
-    uint32_t cpuCycles = 0;
-	std::condition_variable schedulerCv; // added for thread synchronization
-	std::mutex schedulerCvMutex; //added for thread synchronization
-    std::mutex queueMutex;
-    std::mutex cpuMutex;
-    std::mutex schedulerMutex;
+	std::mutex readyQueueMutex;
+	std::mutex cpuAssignmentMutex;
+	std::mutex runningProcessesMutex;
+	std::mutex finishedProcessesMutex;
+	std::mutex cpuMutex;
+	std::atomic<uint32_t> cpuCycles{ 0 };
+	std::atomic<uint32_t> activeCPUTicks{ 0 };
+	std::atomic<uint32_t> idleCPUTicks{ 0 };
+	std::unordered_map<int, bool> isFreeCPUs;
+	bool isBatchProcessing = false;
+	std::queue<std::shared_ptr<Process>> readyQueueForProcesses;
+	std::vector<std::shared_ptr<Process>> finishedProcesses;
+	std::vector<std::shared_ptr<Process>> runningProcesses;
 };
+

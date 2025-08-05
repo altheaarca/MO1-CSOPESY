@@ -1,178 +1,276 @@
-﻿// MemoryManager.cpp
-#include "MemoryManager.h"
+﻿#include "MemoryManager.h"
+#include "Process.h"
+#include "OSController.h"
 #include <iostream>
-#include <fstream>
 #include <iomanip>
-#include <chrono>
-#include <ctime>
-#include <cmath>
+#define NOMINMAX
 
-MemoryManager::MemoryManager(std::shared_ptr<ConfigSpecs> config) {
-    totalMemory = config->getMaxOverallMemory();
-    memPerProc = config->getMemPerProcess();
-    frameSize = config->getMemPerFrame();
 
-    memoryBlocks.push_back({ 0, totalMemory, false, "" });
+MemoryManager::MemoryManager(std::uint32_t maxMem, std::uint32_t memFrame)
+{
+	totalMemory = maxMem;
+	frameSize = memFrame;
+	totalPages = totalMemory / frameSize;
+	framesPagedIn = 0;
+	framesPagedOut = 0;
+	totalUsedMemory = 0;
 
-    // backing store + frame table
-    backingStore = std::make_shared<BackingStore>("csopesy-backing-store.txt");
-    uint32_t frameCount = totalMemory / frameSize;
-    frameTable.resize(frameCount);
+	// Initialize all pages to -1 (free)
+	for (std::uint32_t i = 0; i < totalPages; ++i) {
+		pageTable[i] = -1;
+	}
 }
 
-bool MemoryManager::allocateMemory(const std::string& processName) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    for (size_t i = 0; i < memoryBlocks.size(); ++i) {
-        auto& b = memoryBlocks[i];
-        if (!b.allocated && b.size >= memPerProc) {
-            MemoryBlock nb{ b.startAddress, memPerProc, true, processName };
-            b.startAddress += memPerProc;
-            b.size -= memPerProc;
-            if (b.size == 0) memoryBlocks[i] = nb;
-            else memoryBlocks.insert(memoryBlocks.begin() + i, nb);
-            return true;
-        }
-    }
-    return false;
+bool MemoryManager::isAllocatable(std::uint32_t processPages)
+{
+	std::uint32_t freePages = 0;
+	for (const auto& [page, pid] : pageTable) {
+		if (pid == -1) ++freePages;
+	}
+	return freePages >= processPages;
 }
 
-void MemoryManager::deallocateMemory(const std::string& processName) {
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        for (auto& b : memoryBlocks) {
-            if (b.allocated && b.processName == processName) {
-                b.allocated = false;
-                b.processName.clear();
-            }
-        }
-        mergeFreeBlocks();
-    }
-    // free frames
-    for (auto& f : frameTable) {
-        if (f.occupied && f.ownerProcess == processName) {
-            f = Frame{};
-            pagesPagedOut++;
-        }
-    }
+void MemoryManager::allocateProcess(std::shared_ptr<Process> process)
+{
+	int pid = process->getProcessID();
+	std::uint32_t processSize = process->getMemorySize();
+	std::uint32_t pagesNeeded = process->getTotalPages();
+
+	// Check if already allocated
+	for (const auto& p : processesAllocatedInMemory) {
+		if (p->getProcessID() == pid) {
+			//std::cout << "[MemoryManager] PID " << pid << " is already allocated in memory.\n";
+			return;
+		}
+	}
+
+	// Check if memory is sufficient
+	if (!isAllocatable(pagesNeeded)) {
+		//std::cout << "[MemoryManager] Not enough memory to allocate PID " << pid << "\n";
+		return;
+	}
+
+	std::uint32_t pagesAllocated = 0;
+	for (auto& [pageNum, mappedPID] : pageTable) {
+		if (mappedPID == -1) {
+			pageTable[pageNum] = pid;
+			pagesAllocated++;
+			framesPagedIn++;
+
+			if (pagesAllocated == pagesNeeded)
+				break;
+		}
+	}
+
+	totalUsedMemory += pagesAllocated * frameSize;
+	processesAllocatedInMemory.push_back(process);
+	//std::cout << "[MemoryManager] Allocated PID " << pid << " with " << pagesAllocated << " page(s).\n";
 }
 
-void MemoryManager::mergeFreeBlocks() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    for (size_t i = 0; i + 1 < memoryBlocks.size();) {
-        if (!memoryBlocks[i].allocated && !memoryBlocks[i + 1].allocated) {
-            memoryBlocks[i].size += memoryBlocks[i + 1].size;
-            memoryBlocks.erase(memoryBlocks.begin() + i + 1);
-        }
-        else ++i;
-    }
+void MemoryManager::deallocateProcess(std::shared_ptr<Process> process)
+{
+	int pid = process->getProcessID();
+	std::uint32_t freedPages = 0;
+
+	for (auto& [pageNum, mappedPID] : pageTable) {
+		if (mappedPID == pid) {
+			pageTable[pageNum] = -1;
+			freedPages++;
+			framesPagedOut++;
+		}
+	}
+
+	// Remove from allocation list
+	processesAllocatedInMemory.erase(
+		std::remove_if(processesAllocatedInMemory.begin(), processesAllocatedInMemory.end(),
+			[pid](const std::shared_ptr<Process>& p) {
+				return p->getProcessID() == pid;
+			}),
+		processesAllocatedInMemory.end()
+	);
+	totalUsedMemory -= freedPages * frameSize;
+	//std::cout << "[MemoryManager] Deallocated PID " << pid << " and freed " << freedPages << " page(s).\n";
 }
 
-uint32_t MemoryManager::getExternalFragmentation() const {
-    uint32_t totalFree = 0;
-    for (auto& b : memoryBlocks) {
-        if (!b.allocated && b.size < memPerProc)
-            totalFree += b.size;
-    }
-    return totalFree;
+bool MemoryManager::isProcessAllocated(std::shared_ptr<Process> process)
+{
+	int pid = process->getProcessID();
+	for (const auto& [pageNum, mappedPID] : pageTable) {
+		if (mappedPID == pid) {
+			/*	std::cout << "[MemoryManager] Process PID " << pid << " is currently allocated in memory.\n";*/
+			return true;
+		}
+	}
+	//std::cout << "[MemoryManager] Process PID " << pid << " is NOT allocated in memory.\n";
+	return false;
+}
+
+void MemoryManager::viewMemoryPages()
+{
+	std::cout << "\n--- Memory Page Table ---\n";
+	std::unordered_map<int, std::uint32_t> memoryUsagePerPID;
+	std::uint32_t usedPages = 0;
+
+	for (const auto& [pageNum, pid] : pageTable) {
+		if (pid == -1) {
+			std::cout << "Page " << pageNum << " => [ FREE ]\n";
+		}
+		else {
+			std::cout << "Page " << pageNum << " => PID " << pid << "\n";
+			memoryUsagePerPID[pid]++;
+			usedPages++;
+		}
+	}
+
+	std::cout << "--------------------------\n";
+
+	std::cout << "\n--- Memory Usage Per Process ---\n";
+	for (const auto& [pid, pages] : memoryUsagePerPID) {
+		std::uint32_t bytesUsed = pages * frameSize;
+		std::cout << "PID " << pid << " => " << pages << " pages (" << bytesUsed << " bytes)\n";
+	}
+
+	std::uint32_t totalPagesBytes = totalPages * frameSize;
+	std::uint32_t usedBytes = usedPages * frameSize;
+	double usagePercent = (static_cast<double>(usedPages) / totalPages) * 100.0;
+
+	std::cout << "\n--- Overall Memory Usage ---\n";
+	std::cout << "Used: " << usedPages << "/" << totalPages << " pages\n";
+	std::cout << "Used: " << usedBytes << "/" << totalPagesBytes << " bytes\n";
+	std::cout << "Usage: " << std::fixed << std::setprecision(2) << usagePercent << "%\n";
+	std::cout << "Paged In: " << framesPagedIn << " pages\n";
+	std::cout << "Paged Out: " << framesPagedOut << " pages\n";
+	std::cout << "------------------------------\n";
+
+}
+
+std::shared_ptr<Process> MemoryManager::getOldestProcess()
+{
+	std::shared_ptr<Process> oldest = nullptr;
+	std::time_t oldestTime = (std::numeric_limits<std::time_t>::max)();
+
+	for (const auto& process : processesAllocatedInMemory) {
+		if (process->getProcessState() == Process::PRE_EMPTED) {
+			std::time_t created = process->getProcessCreatedOn();
+			if (created < oldestTime) {
+				oldestTime = created;
+				oldest = process;
+			}
+		}
+	}
+
+	return oldest;
+}
+
+std::uint32_t MemoryManager::getTotalMemory()
+{
+	return totalMemory;
+}
+
+std::uint32_t MemoryManager::getFrameSize()
+{
+	return frameSize;
+}
+
+std::uint32_t MemoryManager::getTotalPages()
+{
+	return totalPages;
+}
+
+std::uint32_t MemoryManager::getFramesPagedIn()
+{
+	return framesPagedIn;
+}
+
+std::uint32_t MemoryManager::getFramesPagedOut()
+{
+	return framesPagedOut;
+}
+
+std::uint32_t MemoryManager::getTotalUsedMemory()
+{
+	return totalUsedMemory;
+}
+
+void MemoryManager::virtualMemoryStat()
+{
+	auto scheduler = OSController::getInstance()->getCPUScheduler();
+
+	std::uint32_t cpuCycles = scheduler->getCpuCycles();
+	std::uint32_t activeCPUTicks = scheduler->getActiveCPUTicks();
+	std::uint32_t idleCPUTicks = scheduler->getIdleCPUTicks();
+
+	std::uint32_t pagedIn = getFramesPagedIn();
+	std::uint32_t pagedOut = getFramesPagedOut();
+
+	std::uint32_t usedMemory = getTotalUsedMemory();
+	std::uint32_t totalMemory = totalPages * frameSize;
+	std::uint32_t freeMemory = totalMemory - usedMemory;
+
+	std::stringstream ss;
+	ss << "------------------------------------------\n";
+	ss << "|              VMSTAT V01.00             |\n";
+	ss << "------------------------------------------\n";
+	ss << "Total Memory     : " << totalMemory << "B\n";
+	ss << "Used Memory      : " << usedMemory << "B\n";
+	ss << "Free Memory      : " << freeMemory << "B\n";
+	ss << "Idle CPU Ticks   : " << idleCPUTicks << "\n";
+	ss << "Active CPU Ticks : " << activeCPUTicks << "\n";
+	ss << "Total CPU Ticks  : " << cpuCycles << "\n";
+	ss << "Num Paged In     : " << pagedIn << "\n";
+	ss << "Num Paged Out    : " << pagedOut << "\n";
+	ss << "------------------------------------------\n\n";
+
+	std::cout << ss.str();
+}
+
+void MemoryManager::processInformation()
+{
+	auto scheduler = OSController::getInstance()->getCPUScheduler();
+	std::uint32_t workingCPUs = scheduler->getAmountOfWorkingCPUs();
+	std::uint32_t amountOfCPUs = scheduler->getAmountOfCPUs();
+
+	std::ostringstream ss;
+
+	// CPU utilization
+	double cpuUtilPercent = 0.0;
+	if (amountOfCPUs != 0)
+		cpuUtilPercent = (static_cast<double>(workingCPUs) / amountOfCPUs) * 100.0;
+
+	// Memory usage
+	std::uint32_t usedMemory = getTotalUsedMemory();
+	std::uint32_t totalMemory = totalPages * frameSize;
+	double memoryUtil = (totalMemory != 0) ? (static_cast<double>(usedMemory) / totalMemory) * 100.0 : 0.0;
+
+	// Build memory usage map per PID
+	std::unordered_map<int, std::uint32_t> memoryUsagePerPID;
+	for (const auto& [pageNum, pid] : pageTable) {
+		if (pid != -1) {
+			memoryUsagePerPID[pid]++;
+		}
+	}
+
+	// Output header
+	ss << "-------------------------------------------\n";
+	ss << "|            PROCESS-SMI V01.00           |\n";
+	ss << "-------------------------------------------\n";
+	ss << "CPU-Util      : " << std::fixed << std::setprecision(2) << cpuUtilPercent << "%\n";
+	ss << "Memory Usage  : " << usedMemory << "B / " << totalMemory << "B\n";
+	ss << "Memory Util   : " << std::fixed << std::setprecision(2) << memoryUtil << "%\n\n";
+	ss << "===========================================\n";
+	ss << "Running processes and memory usage:\n";
+	ss << "-------------------------------------------\n";
+
+	for (const auto& proc : processesAllocatedInMemory) {
+		std::string procName = proc->getProcessName();
+		std::uint32_t pid = proc->getProcessID();
+		std::uint32_t memBytes = memoryUsagePerPID[pid] * frameSize;
+		ss << procName << " (" << memBytes << "B)\n";
+	}
+
+	ss << "-------------------------------------------\n\n";
+
+	std::cout << ss.str();
 }
 
 
-void MemoryManager::generateMemorySnapshot(uint32_t quantumCycle) {
-    std::ostringstream filename;
-    filename << "memory_stamp_" << std::setw(2) << std::setfill('0') << quantumCycle << ".txt";
-    std::ofstream out(filename.str());
-    if (!out.is_open()) return;
-
-    auto now = std::chrono::system_clock::now();
-    auto in_time_t = std::chrono::system_clock::to_time_t(now);
-    std::tm timeinfo{};
-    localtime_s(&timeinfo, &in_time_t);
-    out << "Timestamp: (" << std::put_time(&timeinfo, "%m/%d/%Y %I:%M:%S%p") << ")\n";
-
-    int procCount = 0;
-    for (const auto& block : memoryBlocks) {
-        if (block.allocated) ++procCount;
-    }
-
-    out << "Number of processes in memory: " << procCount << "\n";
-    out << "Total external fragmentation in KB: " << getExternalFragmentation() / 1024 << "\n\n";
-
-    out << "----end---- = " << totalMemory << "\n";
-    for (auto it = memoryBlocks.rbegin(); it != memoryBlocks.rend(); ++it) {
-        if (it->allocated) {
-            out << (it->startAddress + it->size) << "\n";
-            out << it->processName << "\n";
-            out << it->startAddress << "\n\n";
-        }
-    }
-    out << "----start---- = 0\n";
-    out.close();
-}
-
-void MemoryManager::printMemoryStatus() {
-    //TODO: use customizedLayout as reference for format 
-    std::cout << "\n=========================\n";
-    std::cout << "       PROCESS-SMI       \n";
-    std::cout << "=========================\n";
-
-    int procCount = 0;
-    for (const auto& block : memoryBlocks) {
-        if (block.allocated) {
-            std::cout << "Process: " << std::setw(15) << block.processName
-                << " | Start: " << std::setw(8) << block.startAddress
-                << " | Size: " << std::setw(8) << block.size << "\n";
-            ++procCount;
-        }
-    }
-
-    std::cout << "\nTotal processes in memory: " << procCount << "\n";
-    std::cout << "Total external fragmentation: " << getExternalFragmentation() / 1024 << " KB\n";
-    std::cout << "=========================\n\n";
-}
-
-const std::vector<MemoryManager::MemoryBlock>& MemoryManager::getMemoryBlocks() const {
-    return memoryBlocks;
-}
-
-void MemoryManager::tickCycle() {
-    cpuCycles++;
-}
-
-bool MemoryManager::loadPage(const std::string& processName, int pageNumber, bool isModified) {
-    // free frame?
-    for (size_t i = 0; i < frameTable.size(); ++i) {
-        if (!frameTable[i].occupied) {
-            frameTable[i] = Frame{ true, processName, pageNumber, isModified, cpuCycles };
-            fifoQueue.push((int)i);
-            pagesPagedIn++;
-            return true;
-        }
-    }
-    // replace
-    if (replacePage(processName, pageNumber, isModified)) {
-        pagesPagedIn++;
-        return true;
-    }
-    return false;
-}
-
-bool MemoryManager::replacePage(const std::string& processName, int pageNumber, bool isModified) {
-    while (!fifoQueue.empty()) {
-        int idx = fifoQueue.front(); fifoQueue.pop();
-        auto& v = frameTable[idx];
-        if (v.modified && (cpuCycles - v.lastUsedCycle) < frameTable.size()) {
-            fifoQueue.push(idx);
-            continue;
-        }
-        backingStore->logEviction(v.ownerProcess, v.pageNumber);
-        pagesPagedOut++;
-        backingStore->writePage(v.ownerProcess, v.pageNumber, "");
-        v = Frame{ true, processName, pageNumber, isModified, cpuCycles };
-        fifoQueue.push(idx);
-        std::cout << "[Page Replacement] frame " << idx
-            << " := " << processName << ":" << pageNumber << "\n";
-        return true;
-    }
-    std::cerr << "[MemoryManager] no victim\n";
-    return false;
-}
