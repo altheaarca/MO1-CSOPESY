@@ -87,4 +87,3 @@ This option is similar to Option 1, but starts by downloading the repository as 
   
   Build and run the project as described in Step 5 of Option 1.
   
-  We hope you find this project informative and easy to set up!
